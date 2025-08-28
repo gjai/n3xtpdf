@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-file-pdf"></i> BAT {{ bat.order_reference }}</h2>
+    <div>
+        <a href="{{ url_for('admin.list_bats') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Retour à la liste
+        </a>
+        <a href="{{ url_for('client.view_bat', token=bat.secure_token) }}" 
+           class="btn btn-primary" target="_blank">
+            <i class="fas fa-external-link-alt"></i> Voir comme client
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Informations du BAT</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-4">Référence :</dt>
+                            <dd class="col-sm-8"><strong>{{ bat.order_reference }}</strong></dd>
+                            
+                            <dt class="col-sm-4">Client :</dt>
+                            <dd class="col-sm-8">
+                                <i class="fas fa-user"></i> {{ bat.client.username }}
+                                <br><small class="text-muted">{{ bat.client.email }}</small>
+                            </dd>
+                            
+                            <dt class="col-sm-4">Fichier :</dt>
+                            <dd class="col-sm-8">
+                                {{ bat.original_filename }}
+                                <br><small class="text-muted">{{ bat.filename }}</small>
+                            </dd>
+                            
+                            <dt class="col-sm-4">Statut :</dt>
+                            <dd class="col-sm-8">
+                                {% if bat.status == 'pending' %}
+                                    <span class="badge bg-warning fs-6">En attente</span>
+                                {% elif bat.status == 'accepted' %}
+                                    <span class="badge bg-success fs-6">Accepté</span>
+                                {% elif bat.status == 'rejected' %}
+                                    <span class="badge bg-danger fs-6">Refusé</span>
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-5">Upload :</dt>
+                            <dd class="col-sm-7">{{ bat.upload_date.strftime('%d/%m/%Y à %H:%M') }}</dd>
+                            
+                            {% if bat.response_date %}
+                            <dt class="col-sm-5">Réponse :</dt>
+                            <dd class="col-sm-7">{{ bat.response_date.strftime('%d/%m/%Y à %H:%M') }}</dd>
+                            {% endif %}
+                            
+                            {% if bat.production_start_date %}
+                            <dt class="col-sm-5">Production :</dt>
+                            <dd class="col-sm-7">{{ bat.production_start_date.strftime('%d/%m/%Y à %H:%M') }}</dd>
+                            {% endif %}
+                            
+                            {% if bat.estimated_delivery_date %}
+                            <dt class="col-sm-5">Livraison :</dt>
+                            <dd class="col-sm-7">{{ bat.estimated_delivery_date.strftime('%d/%m/%Y') }}</dd>
+                            {% endif %}
+                            
+                            <dt class="col-sm-5">Token :</dt>
+                            <dd class="col-sm-7">
+                                <span class="secure-link">{{ bat.secure_token[:16] }}...</span>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Vérifications techniques</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                {% if bat.is_cmyk %}
+                                    <div class="alert alert-success alert-sm">
+                                        <i class="fas fa-check-circle"></i> Mode CMJN détecté
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-warning alert-sm">
+                                        <i class="fas fa-exclamation-triangle"></i> Mode CMJN non détecté
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                {% if bat.has_cutting_layer %}
+                                    <div class="alert alert-success alert-sm">
+                                        <i class="fas fa-check-circle"></i> Calque découpe détecté
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-warning alert-sm">
+                                        <i class="fas fa-exclamation-triangle"></i> Calque découpe non détecté
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if bat.validation_notes %}
+                <div class="mt-3">
+                    <h6>Notes de validation</h6>
+                    <div class="alert alert-info">
+                        <pre class="mb-0">{{ bat.validation_notes }}</pre>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="mt-3">
+                    <a href="{{ url_for('client.download_bat', token=bat.secure_token) }}" 
+                       class="btn btn-primary">
+                        <i class="fas fa-download"></i> Télécharger le PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history"></i> Historique des consultations</h5>
+            </div>
+            <div class="card-body">
+                {% if consultations %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Utilisateur</th>
+                                    <th>Adresse IP</th>
+                                    <th>User Agent</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for consultation in consultations %}
+                                <tr>
+                                    <td>{{ consultation.consultation_date.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                                    <td>
+                                        <i class="fas fa-user"></i> {{ consultation.user.username }}
+                                        {% if consultation.user.is_admin %}
+                                            <span class="badge bg-primary">Admin</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><code>{{ consultation.ip_address or 'N/A' }}</code></td>
+                                    <td>
+                                        <small>{{ (consultation.user_agent[:50] + '...') if consultation.user_agent and consultation.user_agent|length > 50 else (consultation.user_agent or 'N/A') }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Aucune consultation enregistrée.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-bell"></i> Rappels envoyés</h6>
+            </div>
+            <div class="card-body">
+                {% if reminders %}
+                    {% for reminder in reminders %}
+                    <div class="border-bottom pb-2 mb-2">
+                        <small>
+                            <strong>Rappel #{{ reminder.reminder_count }}</strong><br>
+                            {{ reminder.sent_date.strftime('%d/%m/%Y à %H:%M') }}<br>
+                            <span class="text-muted">À: {{ reminder.email_sent_to }}</span>
+                        </small>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">Aucun rappel envoyé.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-chart-bar"></i> Statistiques</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4>{{ consultations|length }}</h4>
+                        <small class="text-muted">Consultations</small>
+                    </div>
+                    <div class="col-6">
+                        <h4>{{ reminders|length }}</h4>
+                        <small class="text-muted">Rappels</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0 text-danger"><i class="fas fa-trash"></i> Zone dangereuse</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">La suppression d'un BAT est définitive et supprimera le fichier du serveur.</p>
+                
+                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="fas fa-trash"></i> Supprimer ce BAT
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Supprimer le BAT
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <strong>Attention !</strong> Cette action est irréversible.
+                    Le fichier sera définitivement supprimé du serveur.
+                </div>
+                
+                <p>Vous êtes sur le point de supprimer :</p>
+                <ul>
+                    <li><strong>BAT :</strong> {{ bat.order_reference }}</li>
+                    <li><strong>Fichier :</strong> {{ bat.original_filename }}</li>
+                    <li><strong>Client :</strong> {{ bat.client.username }}</li>
+                </ul>
+                
+                <form method="POST" action="{{ url_for('admin.delete_bat', bat_id=bat.id) }}">
+                    {{ delete_form.hidden_tag() }}
+                    {{ delete_form.bat_id(value=bat.id) }}
+                    
+                    <div class="mb-3">
+                        {{ delete_form.confirmation.label(class="form-label") }}
+                        {{ delete_form.confirmation(class="form-control", placeholder="SUPPRIMER") }}
+                        {% if delete_form.confirmation.errors %}
+                            <div class="text-danger">
+                                {% for error in delete_form.confirmation.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Supprimer définitivement
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

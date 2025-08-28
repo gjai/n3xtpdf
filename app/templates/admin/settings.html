@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-cog"></i> Paramètres</h2>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Retour au tableau de bord
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Configuration des rappels</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.reminder_interval_days.label(class="form-label") }}
+                        {{ form.reminder_interval_days(class="form-control") }}
+                        {% if form.reminder_interval_days.errors %}
+                            <div class="text-danger">
+                                {% for error in form.reminder_interval_days.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Fréquence d'envoi des rappels automatiques pour les BAT en attente
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> {{ form.submit.label.text }}
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Consignes techniques</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    Les consignes techniques sont affichées à toutes les étapes du processus.
+                </p>
+                
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Mode colorimétrique CMJN obligatoire
+                        <span class="badge bg-success rounded-pill">Actif</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Calque "découpe" séparé obligatoire pour les formes découpées
+                        <span class="badge bg-success rounded-pill">Actif</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Résolution minimale 300 DPI
+                        <span class="badge bg-success rounded-pill">Actif</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Fond perdu de 3mm minimum
+                        <span class="badge bg-success rounded-pill">Actif</span>
+                    </li>
+                </ul>
+                
+                <div class="alert alert-info mt-3">
+                    <small>
+                        <i class="fas fa-info-circle"></i> 
+                        Les consignes techniques sont configurées dans le fichier config.py
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Actions système</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-warning" onclick="sendReminders()">
+                        <i class="fas fa-bell"></i> Envoyer les rappels
+                    </button>
+                    
+                    <button type="button" class="btn btn-outline-info" onclick="refreshStats()">
+                        <i class="fas fa-sync"></i> Actualiser les stats
+                    </button>
+                </div>
+                
+                <div class="mt-3">
+                    <h6>Informations système</h6>
+                    <ul class="list-unstyled small">
+                        <li><strong>Version :</strong> 1.0</li>
+                        <li><strong>Python :</strong> {{ python_version() }}</li>
+                        <li><strong>Flask :</strong> {{ flask_version() }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Sécurité</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled small">
+                    <li><i class="fas fa-check text-success"></i> Tokens sécurisés 64 caractères</li>
+                    <li><i class="fas fa-check text-success"></i> Logging des consultations</li>
+                    <li><i class="fas fa-check text-success"></i> Protection CSRF</li>
+                    <li><i class="fas fa-check text-success"></i> Validation fichiers PDF</li>
+                    <li><i class="fas fa-check text-success"></i> Sessions sécurisées</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function sendReminders() {
+    if (confirm('Envoyer les rappels automatiques pour tous les BAT en attente ?')) {
+        // In a real implementation, this would make an AJAX call to send reminders
+        alert('Fonctionnalité à implémenter : envoi des rappels via commande CLI');
+    }
+}
+
+function refreshStats() {
+    // Refresh the page or update stats via AJAX
+    window.location.reload();
+}
+
+function python_version() {
+    return 'Python version info would be here';
+}
+
+function flask_version() {
+    return 'Flask version info would be here';
+}
+</script>
+{% endblock %}
