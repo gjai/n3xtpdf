@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-list"></i> Gestion des BAT</h2>
+    <div>
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('admin.list_bats') }}" 
+               class="btn {% if not status_filter %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                Tous
+            </a>
+            <a href="{{ url_for('admin.list_bats', status='pending') }}" 
+               class="btn {% if status_filter == 'pending' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                En attente
+            </a>
+            <a href="{{ url_for('admin.list_bats', status='accepted') }}" 
+               class="btn {% if status_filter == 'accepted' %}btn-success{% else %}btn-outline-success{% endif %}">
+                Acceptés
+            </a>
+            <a href="{{ url_for('admin.list_bats', status='rejected') }}" 
+               class="btn {% if status_filter == 'rejected' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                Refusés
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if bats.items %}
+            <form method="POST" action="{{ url_for('admin.batch_action') }}" id="batchForm">
+                {{ batch_form.hidden_tag() }}
+                {{ batch_form.bat_ids() }}
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            {{ batch_form.action(class="form-select") }}
+                            <button type="submit" class="btn btn-primary" onclick="return confirmBatchAction()">
+                                <i class="fas fa-check"></i> Exécuter
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button type="button" class="btn btn-outline-secondary" onclick="selectAll()">
+                            <i class="fas fa-check-square"></i> Tout sélectionner
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="selectNone()">
+                            <i class="fas fa-square"></i> Tout désélectionner
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th width="40">
+                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                                </th>
+                                <th>Référence</th>
+                                <th>Client</th>
+                                <th>Fichier</th>
+                                <th>Date upload</th>
+                                <th>Statut</th>
+                                <th>Vérifications</th>
+                                <th>Consultations</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bat in bats.items %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="bat-checkbox" value="{{ bat.id }}" 
+                                           onchange="updateBatchSelection()">
+                                </td>
+                                <td>
+                                    <strong>{{ bat.order_reference }}</strong>
+                                </td>
+                                <td>
+                                    <i class="fas fa-user"></i> {{ bat.client.username }}
+                                    <br><small class="text-muted">{{ bat.client.email }}</small>
+                                </td>
+                                <td>
+                                    {{ bat.original_filename }}
+                                    <br><small class="text-muted">{{ (bat.filename|length < 30) and bat.filename or (bat.filename[:27] + '...') }}</small>
+                                </td>
+                                <td>{{ bat.upload_date.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>
+                                    {% if bat.status == 'pending' %}
+                                        <span class="badge bg-warning">En attente</span>
+                                    {% elif bat.status == 'accepted' %}
+                                        <span class="badge bg-success">Accepté</span>
+                                        {% if bat.estimated_delivery_date %}
+                                            <br><small class="text-muted">
+                                                Livraison: {{ bat.estimated_delivery_date.strftime('%d/%m/%Y') }}
+                                            </small>
+                                        {% endif %}
+                                    {% elif bat.status == 'rejected' %}
+                                        <span class="badge bg-danger">Refusé</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if bat.is_cmyk %}
+                                        <i class="fas fa-check-circle text-success" title="CMJN OK"></i>
+                                    {% else %}
+                                        <i class="fas fa-exclamation-triangle text-warning" title="CMJN manquant"></i>
+                                    {% endif %}
+                                    {% if bat.has_cutting_layer %}
+                                        <i class="fas fa-check-circle text-success" title="Découpe OK"></i>
+                                    {% else %}
+                                        <i class="fas fa-exclamation-triangle text-warning" title="Découpe manquante"></i>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ bat.consultation_logs.count() }}</span>
+                                    {% if bat.reminder_logs.count() > 0 %}
+                                        <br><small class="text-muted">
+                                            <i class="fas fa-bell"></i> {{ bat.reminder_logs.count() }} rappel(s)
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group-vertical btn-group-sm">
+                                        <a href="{{ url_for('admin.view_bat_details', bat_id=bat.id) }}" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-eye"></i> Détails
+                                        </a>
+                                        <a href="{{ url_for('client.view_bat', token=bat.secure_token) }}" 
+                                           class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-link"></i> Lien
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </form>
+            
+            <!-- Pagination -->
+            {% if bats.pages > 1 %}
+            <nav aria-label="Navigation des pages">
+                <ul class="pagination justify-content-center">
+                    {% if bats.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.list_bats', page=bats.prev_num, status=status_filter) }}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in bats.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != bats.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.list_bats', page=page_num, status=status_filter) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">…</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if bats.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.list_bats', page=bats.next_num, status=status_filter) }}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5>Aucun BAT trouvé</h5>
+                <p class="text-muted">
+                    {% if status_filter %}
+                        Aucun BAT avec le statut "{{ status_filter }}" pour le moment.
+                    {% else %}
+                        Aucun BAT n'a encore été téléchargé.
+                    {% endif %}
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedBats = new Set();
+
+function updateBatchSelection() {
+    selectedBats.clear();
+    document.querySelectorAll('.bat-checkbox:checked').forEach(cb => {
+        selectedBats.add(cb.value);
+    });
+    
+    const batIdsField = document.getElementById('bat_ids');
+    if (batIdsField) {
+        batIdsField.value = Array.from(selectedBats).join(',');
+    }
+    
+    // Update select all checkbox
+    const allCheckboxes = document.querySelectorAll('.bat-checkbox');
+    const checkedCheckboxes = document.querySelectorAll('.bat-checkbox:checked');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    
+    if (selectAllCheckbox) {
+        if (checkedCheckboxes.length === 0) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = false;
+        } else if (checkedCheckboxes.length === allCheckboxes.length) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = true;
+        } else {
+            selectAllCheckbox.indeterminate = true;
+        }
+    }
+}
+
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.bat-checkbox');
+    
+    checkboxes.forEach(cb => {
+        cb.checked = selectAllCheckbox.checked;
+    });
+    
+    updateBatchSelection();
+}
+
+function selectAll() {
+    document.querySelectorAll('.bat-checkbox').forEach(cb => cb.checked = true);
+    updateBatchSelection();
+}
+
+function selectNone() {
+    document.querySelectorAll('.bat-checkbox').forEach(cb => cb.checked = false);
+    updateBatchSelection();
+}
+
+function confirmBatchAction() {
+    if (selectedBats.size === 0) {
+        alert('Veuillez sélectionner au moins un BAT.');
+        return false;
+    }
+    
+    const action = document.getElementById('action').value;
+    if (!action) {
+        alert('Veuillez sélectionner une action.');
+        return false;
+    }
+    
+    let message = `Êtes-vous sûr de vouloir ${action} ${selectedBats.size} BAT(s) sélectionné(s) ?`;
+    
+    if (action === 'delete') {
+        message += '\n\nATTENTION: Cette action supprimera définitivement les fichiers et ne peut pas être annulée.';
+    }
+    
+    return confirm(message);
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateBatchSelection();
+});
+</script>
+{% endblock %}
