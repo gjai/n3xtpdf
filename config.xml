@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+    <name>n3xtpdf</name>
+    <displayName><![CDATA[n3xtpdf - Gestion des BAT PDF]]></displayName>
+    <version><![CDATA[1.0.0]]></version>
+    <description><![CDATA[Module de gestion des BAT (Bon À Tirer) PDF pour commandes personnalisées avec validation automatique et suivi complet.]]></description>
+    <author><![CDATA[n3xtpdf Team]]></author>
+    <tab><![CDATA[administration]]></tab>
+    <confirmUninstall><![CDATA[Êtes-vous sûr de vouloir désinstaller ce module ? Toutes les données BAT seront perdues.]]></confirmUninstall>
+    <is_configurable>1</is_configurable>
+    <need_instance>0</need_instance>
+    <limited_countries></limited_countries>
+</module>
