@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">BAT - {{ bat.order_reference }}</h4>
+                <span class="badge {% if bat.status == 'pending' %}bg-warning{% elif bat.status == 'accepted' %}bg-success{% else %}bg-danger{% endif %} fs-6">
+                    {% if bat.status == 'pending' %}En attente{% elif bat.status == 'accepted' %}Accepté{% else %}Refusé{% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Informations du BAT</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Référence :</strong> {{ bat.order_reference }}</li>
+                            <li><strong>Fichier :</strong> {{ bat.original_filename }}</li>
+                            <li><strong>Date de téléchargement :</strong> {{ bat.upload_date.strftime('%d/%m/%Y à %H:%M') }}</li>
+                            {% if bat.response_date %}
+                                <li><strong>Date de réponse :</strong> {{ bat.response_date.strftime('%d/%m/%Y à %H:%M') }}</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Vérifications techniques</h6>
+                        <ul class="list-unstyled">
+                            <li>
+                                {% if bat.is_cmyk %}
+                                    <i class="fas fa-check-circle text-success"></i> Mode CMJN détecté
+                                {% else %}
+                                    <i class="fas fa-exclamation-triangle text-warning"></i> Mode CMJN non détecté
+                                {% endif %}
+                            </li>
+                            <li>
+                                {% if bat.has_cutting_layer %}
+                                    <i class="fas fa-check-circle text-success"></i> Calque découpe détecté
+                                {% else %}
+                                    <i class="fas fa-exclamation-triangle text-warning"></i> Calque découpe non détecté
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                {% if bat.validation_notes %}
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Notes de validation :</h6>
+                    <pre class="mb-0">{{ bat.validation_notes }}</pre>
+                </div>
+                {% endif %}
+
+                {% if guidelines %}
+                <div class="technical-guidelines mb-4">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Consignes techniques</h6>
+                    <ul class="mb-0">
+                        {% for key, guideline in guidelines.items() %}
+                            <li>{{ guideline }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if bat.status == 'accepted' %}
+                <div class="alert alert-success">
+                    <h6><i class="fas fa-check-circle"></i> BAT accepté</h6>
+                    <p class="mb-1">Votre BAT a été accepté. La production a commencé le {{ bat.production_start_date.strftime('%d/%m/%Y à %H:%M') }}.</p>
+                    {% if bat.estimated_delivery_date %}
+                        <p class="mb-0"><strong>Livraison estimée :</strong> {{ bat.estimated_delivery_date.strftime('%d/%m/%Y') }}</p>
+                    {% endif %}
+                </div>
+                {% elif bat.status == 'rejected' %}
+                <div class="alert alert-danger">
+                    <h6><i class="fas fa-times-circle"></i> BAT refusé</h6>
+                    <p class="mb-0">Votre BAT a été refusé. Veuillez télécharger une nouvelle version corrigée.</p>
+                </div>
+                {% endif %}
+
+                <div class="d-flex gap-2 mb-4">
+                    <a href="{{ url_for('client.download_bat', token=bat.secure_token) }}" 
+                       class="btn btn-primary">
+                        <i class="fas fa-download"></i> Télécharger le PDF
+                    </a>
+                    
+                    {% if bat.status == 'pending' %}
+                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#acceptModal">
+                            <i class="fas fa-check"></i> Accepter
+                        </button>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                            <i class="fas fa-times"></i> Refuser
+                        </button>
+                    {% endif %}
+                </div>
+
+                <div class="text-center">
+                    <p class="secure-link">
+                        <i class="fas fa-lock"></i> Lien sécurisé : 
+                        <span class="text-muted">{{ request.url }}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-history"></i> Historique des consultations</h6>
+            </div>
+            <div class="card-body">
+                {% set consultation_count = bat.consultation_logs.count() %}
+                <p class="text-muted">Ce BAT a été consulté {{ consultation_count }} fois.</p>
+                
+                {% if bat.status == 'pending' %}
+                    <div class="alert alert-warning alert-sm">
+                        <small>
+                            <i class="fas fa-clock"></i> En attente de votre validation.
+                            {% set reminder_count = bat.reminder_logs.count() %}
+                            {% if reminder_count > 0 %}
+                                <br>{{ reminder_count }} rappel(s) envoyé(s).
+                            {% endif %}
+                        </small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-info-circle"></i> Informations importantes</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled small">
+                    <li><i class="fas fa-shield-alt text-primary"></i> Ce lien est sécurisé et personnel</li>
+                    <li><i class="fas fa-eye text-info"></i> Toutes les consultations sont enregistrées</li>
+                    <li><i class="fas fa-clock text-warning"></i> Le délai de production commence à l'acceptation</li>
+                    <li><i class="fas fa-envelope text-secondary"></i> Des rappels seront envoyés si nécessaire</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Accept Modal -->
+<div class="modal fade" id="acceptModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-success">
+                    <i class="fas fa-check-circle"></i> Accepter le BAT
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir accepter ce BAT ?</p>
+                <div class="alert alert-info">
+                    <small>
+                        <i class="fas fa-info-circle"></i> 
+                        Une fois accepté, la production commencera immédiatement et vous ne pourrez plus modifier votre décision.
+                    </small>
+                </div>
+                <form method="POST" action="{{ url_for('client.respond_to_bat') }}">
+                    {{ form.hidden_tag() }}
+                    {{ form.bat_id(value=bat.id) }}
+                    {{ form.action(value='accept') }}
+                    
+                    <div class="mb-3">
+                        {{ form.comments.label(class="form-label") }}
+                        {{ form.comments(class="form-control", placeholder="Commentaires optionnels...") }}
+                    </div>
+                    
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check"></i> Confirmer l'acceptation
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="fas fa-times-circle"></i> Refuser le BAT
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir refuser ce BAT ?</p>
+                <div class="alert alert-warning">
+                    <small>
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        Vous devrez télécharger une nouvelle version après le refus.
+                    </small>
+                </div>
+                <form method="POST" action="{{ url_for('client.respond_to_bat') }}">
+                    {{ form.hidden_tag() }}
+                    {{ form.bat_id(value=bat.id) }}
+                    {{ form.action(value='reject') }}
+                    
+                    <div class="mb-3">
+                        {{ form.comments.label(class="form-label") }}
+                        {{ form.comments(class="form-control", placeholder="Veuillez indiquer les raisons du refus...", required=True) }}
+                    </div>
+                    
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-times"></i> Confirmer le refus
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
